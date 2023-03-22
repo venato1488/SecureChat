@@ -1,2 +1,2 @@
 # TCP_chat_room
-Simple TCP chat root based on client-server communication
+Simple TCP chat room based on client-server communication
