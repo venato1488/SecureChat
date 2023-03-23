@@ -7,15 +7,13 @@ import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Scanner;
-import java.util.Set;
 
 public class Client {
 	
 	private Socket socket;
-	private BufferedReader bufferedReader; // to read messages from server
+	private BufferedReader bufferedReader;
 	private BufferedWriter bufferedWriter;
 	private String username;
-	private Set<String> memberList;
 
 	public Client(Socket socket, String username) {
 		try {
@@ -48,7 +46,7 @@ public class Client {
 		}
 	}
 	
-	public void listenForMessage() {
+	public void listerForMessage() {
 		new Thread(new Runnable() {
 			// Anonimous thread
 			@Override
@@ -59,10 +57,7 @@ public class Client {
 					
 					try {
 						msgFromChat = bufferedReader.readLine();
-						if (msgFromChat != null) {
-							System.out.println(msgFromChat);
-						}
-						
+						System.out.println(msgFromChat);
 					} catch (IOException e) {
 						closeEverything(socket, bufferedReader, bufferedWriter);
 					}
@@ -99,7 +94,7 @@ public class Client {
 		String username = scanner.nextLine();
 		Socket socket = new Socket("localhost", 9999);
 		Client client = new Client(socket, username);
-		client.listenForMessage();
+		client.listerForMessage();
 		client.sendMessage();
 	}
 }
