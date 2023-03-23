@@ -37,14 +37,21 @@ public class Client {
 			//Because at first connection client has to enter username first
 			out.writeObject(new Message(username, null));			
 			out.flush();
-			System.out.println("username sent to server");
+			//System.out.println("username sent to server");
 			
 			Scanner scanner = new Scanner(System.in);
 			while(socket.isConnected()) {
 				String messageToSend = scanner.nextLine();// after user press enter it will be captured in messageToSend
-				out.writeObject(new Message(username, messageToSend));
-				out.flush();
-				System.out.println("Message sent");
+				if (messageToSend.length() != 0) {
+					if (messageToSend.startsWith("/p ")) {
+						// TODO private message
+						out.writeObject(new Message(username, messageToSend));
+						out.flush();
+						System.out.println("private msg");
+					}
+					out.writeObject(new Message(username, messageToSend));
+					out.flush();
+				}
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -65,8 +72,13 @@ public class Client {
 						msgFromChat = in.readObject(); // read serialized data
 						Message message = (Message) msgFromChat; // casting object to its original type
 						
-						if (message != null) {
-							System.out.println(message.getSender()+": "+message.getContent());
+						if (message.getContent() != null) {
+							if (message instanceof Message) {
+								System.out.println(message.getSender()+": "+message.getContent());
+							} else if (message instanceof PrivateMessage) {
+								System.out.println("Private message from " + message.getSender() + ": " + message.getContent());
+							}
+							
 						}
 						
 					} catch (IOException e) {
@@ -103,9 +115,17 @@ public class Client {
 	}
 
 	public boolean isValidUsername(String username) {
-		if(username.length()>3 && !username.contains("!@#$%^&*()_+-=")) {
-			return true;
-		} else return false;
+		if(username.length()<3) {
+			return false;
+		}
+		for(int i=0; i < username.length(); i++) {
+			char c = username.charAt(i);
+			if (c == '!' || c == '@' || c == '#' || c == '$' || c == '%' || c == '^' ||
+		        c == '&' || c == '*' || c == '(' || c == ')' || c == '+' || c == '-' || c == '=') {
+				return false;
+			}
+		}		
+		return true;
 	}
 	
 	public static void main(String[] args) throws UnknownHostException, IOException {
