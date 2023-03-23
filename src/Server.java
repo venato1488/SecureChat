@@ -2,6 +2,7 @@
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.text.DateFormat;
 import java.util.Date;
 
 public class Server {
@@ -43,7 +44,7 @@ public class Server {
 		
 		ServerSocket serverSocket = new ServerSocket(9999);
 		Server server = new Server(serverSocket);
+		System.out.println("Server is up and running.");
 		server.startServer();
-		
 	}
 }

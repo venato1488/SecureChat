@@ -21,9 +21,12 @@ public class ClientHandler implements Runnable{
 			this.socket = socket;
 			this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())); // buffer with byte stream wrapped inside char string for increased efficiency 
 			this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			this.clientUsername = bufferedReader.readLine();
-			clientHandlers.add(this);
-			broadcastMessage("SERVER: " + clientUsername + " has entered the chat!");
+			String temporaryUsername = bufferedReader.readLine();
+			isValidID(temporaryUsername);
+			//this.clientUsername = bufferedReader.readLine();
+			
+			//clientHandlers.add(this);
+			//broadcastMessage("SERVER: " + clientUsername + " has entered the chat!");
 		} catch (IOException e) {
 			closeEverything(socket, bufferedReader, bufferedWriter);
 		}
@@ -49,6 +52,27 @@ public class ClientHandler implements Runnable{
 		
 	}
 	
+	public void isValidID(String username) {
+		if(username.length()>3 && !username.contains("!@#$%^&*()_+-=") && isUniqueID(username)) {
+			this.clientUsername = username;
+			clientHandlers.add(this);
+			broadcastMessage("SERVER: " + clientUsername + " has entered the chat!");
+			
+		} else {
+			closeEverything(socket, bufferedReader, bufferedWriter);
+		}
+	}
+	
+	public boolean isUniqueID(String username) {
+		for(ClientHandler clientHandler : clientHandlers) {
+			if(clientHandler.clientUsername.equals(username)) {
+				return false;
+			}
+		}
+		return true;
+		
+	}
+	
 	public void broadcastMessage(String messageToSend) {
 		for (ClientHandler clientHandler : clientHandlers) {
 			try {
@@ -66,7 +90,8 @@ public class ClientHandler implements Runnable{
 	
 	public void removeClientHandler() {
 		clientHandlers.remove(this);
-		broadcastMessage("SERVER: " + clientUsername + " has left the chat!");
+		if (clientUsername != null) broadcastMessage("SERVER: " + clientUsername + " has left the chat!");
+		
 	}
 	
 	
