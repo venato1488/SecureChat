@@ -27,6 +27,9 @@ public class Server {
 			}
 		} catch (IOException e) {
 			System.out.println("Hmmm");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	
