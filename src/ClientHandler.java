@@ -1,24 +1,23 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
+
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.concurrent.ConcurrentHashMap;
+
 
 public class ClientHandler implements Runnable{
 	// Each object of this class is responsible for communicating with the clients
 	
-	public static ArrayList<ClientHandler> clientHandlers = new ArrayList<>();
-	private static ArrayList<Member> memberList = new ArrayList<>();// for keeping track of clients
+	public static ArrayList<ClientHandler> clientHandlers = new ArrayList<>();// for keeping track of clients
+	private static LinkedHashMap<String, Member> memberList = new LinkedHashMap<>();// for keeping track of members
 	public static int clientCount = 0;
 	private Socket socket; // used to establish client-server connection
 	private ObjectInputStream in; // to read messages from client
 	private ObjectOutputStream out; // to send messages to client
 	private String clientUsername;
-	private Member member;
 	
 	
 	public ClientHandler(Socket socket) throws ClassNotFoundException {
@@ -29,10 +28,6 @@ public class ClientHandler implements Runnable{
 			Object temporaryUsernameMessage = in.readObject();
 			Message temporaryUsername = (Message) temporaryUsernameMessage;
 			isValidID(temporaryUsername.getSender());
-			//this.clientUsername = bufferedReader.readLine();
-			
-			//clientHandlers.add(this);
-			//broadcastMessage("SERVER: " + clientUsername + " has entered the chat!");
 		} catch (IOException e) {
 			closeEverything(socket, in, out);
 		}
@@ -59,29 +54,44 @@ public class ClientHandler implements Runnable{
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-		}
-		
+		}		
 	}
 	
-	public void addMember() {
-		if(clientCount==0) {
-			serverMessage(new Message("SERVER",clientUsername + " is Coordinator!"));
-			this.member = new Member(clientUsername,socket.getInetAddress(),socket.getPort(),true);
-			memberList.add(member);
-		} else {
-			this.member = new Member(clientUsername,socket.getInetAddress(),socket.getPort(), false);
-			memberList.add(member);
+	public void updateClientsMemberList() {
+		for(ClientHandler ch : clientHandlers) {
+			try {
+				ch.out.reset(); /* resets previous state of out, without it local version of 
+								   memberList wasn't updating*/
+				ch.out.writeObject(memberList);
+				ch.out.flush();
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
+	}
+	
+	public synchronized void addMember() {
+		if(clientCount==0) {
+			serverMessage(new Message("SERVER", clientUsername + " is Coordinator!"));
+			Member member = new Member(clientUsername,socket.getInetAddress(),socket.getPort(),true);
+			memberList.put(clientUsername, member);
+		} else {
+			Member member = new Member(clientUsername,socket.getInetAddress(),socket.getPort(), false);
+			memberList.put(clientUsername, member);
+		}
+		updateClientsMemberList();
 		clientCount++;
 	}
 	
 	public void serverMessage(Message serverMessage) {
+		// Might be useful when saying that ID is not unique
 		for(ClientHandler clientHandler : clientHandlers) {
 			try {
 				if(clientHandler.clientUsername.equals(clientUsername)) {
 					clientHandler.out.writeObject(serverMessage);
 					clientHandler.out.flush();
-					System.out.println("server msg");
 				}
 			} catch (Exception e) {
 				// TODO: handle exception
@@ -93,6 +103,7 @@ public class ClientHandler implements Runnable{
 		if(isUniqueID(username)) {
 			this.clientUsername = username;
 			clientHandlers.add(this);
+			addMember();
 			broadcastMessage(new Message("SERVER",username + " has entered the chat."));
 			
 		} else {
@@ -106,8 +117,7 @@ public class ClientHandler implements Runnable{
 				return false;
 			}
 		}
-		return true;
-		
+		return true;		
 	}
 	
 	public void privateMessage(PrivateMessage message) {
@@ -139,10 +149,11 @@ public class ClientHandler implements Runnable{
 	}
 	
 	
-	public void removeClientHandler() {
+	public synchronized void removeClientHandler() {
 		clientCount--;
 		clientHandlers.remove(this);
-		memberList.remove(member);
+		memberList.remove(clientUsername);
+		updateClientsMemberList();
 		if (clientUsername != null) broadcastMessage(new Message("SERVER", clientUsername + " has left the chat!"));
 		
 	}
