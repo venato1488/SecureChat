@@ -47,7 +47,7 @@ public class Client {
 					if (messageToSend.startsWith("/p ")) {
 						sendPrivateMessage(messageToSend);
 					} else if (messageToSend.equals("/members")) {
-						System.out.println(memberList);
+						showMembers();
 					} else {
 						out.writeObject(new Message(username, messageToSend));
 						out.flush();
@@ -57,6 +57,15 @@ public class Client {
 		} catch (IOException e) {
 			e.printStackTrace();
 			closeEverything(socket, in, out);
+		}
+	}
+	
+	public void showMembers() {
+		System.out.println("    [LIST OF ONLINE MEMBERS]");
+		for (String key : memberList.keySet()) {
+			Member member = memberList.get(key);
+			System.out.print("Username: " + member.getUsername() + ", IP address: " + member.getIpAddress() + ", port: " + member.getPort());
+			if (member.getCoordinator()) System.out.println(" Coordinator");
 		}
 	}
 	
@@ -78,8 +87,7 @@ public class Client {
 	}
 	
 	public boolean recipientExist(String recipient) {
-		Set<String> memberSet = memberList.keySet();
-		for (String member : memberSet) {
+		for (String member : memberList.keySet()) {
 			if(recipient.equals(member)) return true;
 		}
 		return false;
@@ -114,7 +122,7 @@ public class Client {
 						e1.printStackTrace();
 						closeEverything(socket, in, out);
 					} catch (ClassNotFoundException e) {
-						// TODO Auto-generated catch block
+						System.out.println("Oops, something went wrong. :(");
 						e.printStackTrace();
 					}
 				}				

@@ -99,7 +99,8 @@ public class ClientHandler implements Runnable{
 					clientHandler.out.flush();
 				}
 			} catch (Exception e) {
-				// TODO: handle exception
+				e.printStackTrace();
+				closeEverything(socket, in, out);
 			}
 		}
 	}
