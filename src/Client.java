@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Scanner;
+import java.util.Set;
 
 public class Client {
 	
@@ -38,29 +39,50 @@ public class Client {
 			//Because at first connection client has to enter username first
 			out.writeObject(new Message(username, null));			
 			out.flush();
-			//System.out.println("username sent to server");
-			
 			
 			while(socket.isConnected()) {
 				Scanner scanner = new Scanner(System.in);
 				String messageToSend = scanner.nextLine();// after user press enter it will be captured in messageToSend
 				if (messageToSend.length() != 0) {
 					if (messageToSend.startsWith("/p ")) {
-						// TODO private message
-						out.writeObject(new Message(username, messageToSend));
-						out.flush();
-						System.out.println("private msg");
+						sendPrivateMessage(messageToSend);
 					} else if (messageToSend.equals("/members")) {
 						System.out.println(memberList);
+					} else {
+						out.writeObject(new Message(username, messageToSend));
+						out.flush();
 					}
-					out.writeObject(new Message(username, messageToSend));
-					out.flush();
 				}
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 			closeEverything(socket, in, out);
 		}
+	}
+	
+	public void sendPrivateMessage(String msgToSend) {
+		String[] msgParts = msgToSend.split(" ");
+		String recipient = msgParts[1];
+		String content = msgToSend.substring(3 + recipient.length()+1);
+		if (recipientExist(recipient)) {
+			try {
+				out.writeObject(new PrivateMessage(username, content, recipient));
+				out.flush();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		} else {
+			System.out.println("Recipient doesn't exist! Remember, to send a private message type /p <Recipient> <Message>");
+		}
+		
+	}
+	
+	public boolean recipientExist(String recipient) {
+		Set<String> memberSet = memberList.keySet();
+		for (String member : memberSet) {
+			if(recipient.equals(member)) return true;
+		}
+		return false;
 	}
 	
 	public void listenForMessage() {
@@ -81,12 +103,12 @@ public class Client {
 							LinkedHashMap<String, Member> memberMap = (LinkedHashMap<String, Member>) msgFromChat;
 							updateMemberMap(memberMap);
 							
-						} else if (msgFromChat instanceof Message) {
-							Message message = (Message) msgFromChat; // casting object to its original type
-							printBroadcastMessage(message);
 						} else if (msgFromChat instanceof PrivateMessage) {
 							PrivateMessage privMessage = (PrivateMessage) msgFromChat;
 							printPrivateMessage(privMessage);
+						} else if (msgFromChat instanceof Message) {
+							Message message = (Message) msgFromChat; // casting object to its original type
+							printBroadcastMessage(message);
 						}
 					} catch (IOException e1) {
 						e1.printStackTrace();
@@ -154,6 +176,7 @@ public class Client {
 	public static void main(String[] args) throws UnknownHostException, IOException {
 		Scanner scanner = new Scanner(System.in);
 		System.out.println("Enter your username: ");
+		// TODO check if username is unique
 		String username = scanner.nextLine();
 		Socket socket = new Socket("localhost", 9999);
 		Client client = new Client(socket, username);

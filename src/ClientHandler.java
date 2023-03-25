@@ -44,9 +44,13 @@ public class ClientHandler implements Runnable{
 		while (socket.isConnected()) {
 			try {
 				msgFromClientObject = in.readObject(); // program will halt here until receives a message. Thats why I run it on separate thread so the rest of app isn't stopped here
-				Message msgFromClient = (Message) msgFromClientObject;
-				
-				broadcastMessage(msgFromClient);
+				if (msgFromClientObject instanceof PrivateMessage) {
+					PrivateMessage msgFromClient = (PrivateMessage) msgFromClientObject;
+					privateMessage(msgFromClient);
+				} else if (msgFromClientObject instanceof Message) {
+					Message msgFromClient = (Message) msgFromClientObject;
+					broadcastMessage(msgFromClient);
+				}		
 			} catch (IOException e) {
 				closeEverything(socket, in, out);
 				break;
@@ -73,6 +77,7 @@ public class ClientHandler implements Runnable{
 	}
 	
 	public synchronized void addMember() {
+		// TODO reasignment of coordinator in case he leaves
 		if(clientCount==0) {
 			serverMessage(new Message("SERVER", clientUsername + " is Coordinator!"));
 			Member member = new Member(clientUsername,socket.getInetAddress(),socket.getPort(),true);
@@ -104,8 +109,7 @@ public class ClientHandler implements Runnable{
 			this.clientUsername = username;
 			clientHandlers.add(this);
 			addMember();
-			broadcastMessage(new Message("SERVER",username + " has entered the chat."));
-			
+			broadcastMessage(new Message("SERVER",username + " has entered the chat."));			
 		} else {
 			closeEverything(socket, in, out);
 		}
@@ -124,10 +128,12 @@ public class ClientHandler implements Runnable{
 		for (ClientHandler ch : clientHandlers) {
 			if(ch.clientUsername.equals(message.getRecipient())) {
 				try {
+					ch.out.reset();
 					ch.out.writeObject(message);
+					ch.out.flush();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
+					closeEverything(socket, in, out);
 				}
 			}
 		}
