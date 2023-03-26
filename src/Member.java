@@ -1,6 +1,5 @@
 import java.io.Serializable;
 import java.net.InetAddress;
-import java.util.ArrayList;
 
 public class Member implements Serializable{
 	

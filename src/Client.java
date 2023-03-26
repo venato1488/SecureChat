@@ -3,12 +3,12 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Scanner;
-import java.util.Set;
 
 public class Client {
 	
@@ -60,14 +60,31 @@ public class Client {
 		}
 	}
 	
+	
+
 	public void showMembers() {
-		System.out.println("    [LIST OF ONLINE MEMBERS]");
-		for (String key : memberList.keySet()) {
-			Member member = memberList.get(key);
-			System.out.print("Username: " + member.getUsername() + ", IP address: " + member.getIpAddress() + ", port: " + member.getPort());
-			if (member.getCoordinator()) System.out.println(" Coordinator");
-		}
+    	System.out.println("             [LIST OF ONLINE MEMBERS]");
+
+    	String format = "| %-20s | %-15s | %-6s | %-12s |%n";
+    	// Print table headers
+    	System.out.format("+----------------------+-----------------+--------+--------------+%n");
+    	System.out.format("| Username             | IP Address      | Port   | Coordinator  |%n");
+    	System.out.format("+----------------------+-----------------+--------+--------------+%n");
+
+    	for (String key : memberList.keySet()) {
+        	Member member = memberList.get(key);
+        	String username = member.getUsername();
+       		String ipAddress = member.getIpAddress().toString();
+        	int port = member.getPort();
+        	String coordinator = member.getCoordinator() ? "Yes" : "No";
+
+        	System.out.format(format, username, ipAddress, port, coordinator);
+    	}
+
+    // Print table footer
+    System.out.format("+----------------------+-----------------+--------+--------------+%n");
 	}
+
 	
 	public void sendPrivateMessage(String msgToSend) {
 		String[] msgParts = msgToSend.split(" ");
@@ -118,14 +135,18 @@ public class Client {
 							Message message = (Message) msgFromChat; // casting object to its original type
 							printBroadcastMessage(message);
 						}
+					} catch (SocketException e) {
+						System.out.println("Oops, something went wrong. :(");
+						break;
+						//e.printStackTrace();
 					} catch (IOException e1) {
-						e1.printStackTrace();
+						//e1.printStackTrace();
 						closeEverything(socket, in, out);
 					} catch (ClassNotFoundException e) {
 						System.out.println("Oops, something went wrong. :(");
-						e.printStackTrace();
-					}
-				}				
+						//e.printStackTrace();
+					} 
+				}
 			}			
 		}).start();			
 	}

@@ -5,7 +5,6 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.concurrent.ConcurrentHashMap;
 
 
 public class ClientHandler implements Runnable{
@@ -26,8 +25,13 @@ public class ClientHandler implements Runnable{
 			this.out = new ObjectOutputStream(socket.getOutputStream()); // buffer with byte stream wrapped inside char string for increased efficiency 
 			this.in = new ObjectInputStream(socket.getInputStream());
 			Object temporaryUsernameMessage = in.readObject();
-			Message temporaryUsername = (Message) temporaryUsernameMessage;
-			isValidID(temporaryUsername.getSender());
+			String temporaryUsername = ((Message) temporaryUsernameMessage).getSender();
+			if (isUniqueID(temporaryUsername)){
+				approveUser(temporaryUsername);
+			} else {
+				denyUser();
+			}
+			
 		} catch (IOException e) {
 			closeEverything(socket, in, out);
 		}
@@ -35,6 +39,19 @@ public class ClientHandler implements Runnable{
 	
 	
 	
+	private void denyUser() {
+		try {
+			out.writeObject(new Message("SERVER", "Username is not unique! Reconnect with different username!"));
+			out.flush();
+			closeEverything(socket, in, out);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+
+
 	@Override
 	public void run() {
 		// Everything that runs here runs on a separate thread
@@ -105,15 +122,11 @@ public class ClientHandler implements Runnable{
 		}
 	}
 	
-	public void isValidID(String username) {
-		if(isUniqueID(username)) {
-			this.clientUsername = username;
-			clientHandlers.add(this);
-			addMember();
-			broadcastMessage(new Message("SERVER",username + " has entered the chat."));			
-		} else {
-			closeEverything(socket, in, out);
-		}
+	public void approveUser(String username) {		
+		this.clientUsername = username;
+		clientHandlers.add(this);
+		addMember();
+		broadcastMessage(new Message("SERVER",username + " has entered the chat."));					
 	}
 	
 	public boolean isUniqueID(String username) {
