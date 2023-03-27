@@ -46,6 +46,120 @@ public class ClientHandler implements Runnable{
 				break;
 			}
 		}
+<<<<<<< Updated upstream
+=======
+	}
+	
+	public synchronized void addMember() {
+		// TODO reasignment of coordinator in case he leaves
+		if(clientCount==0) {
+			serverMessage(new Message("SERVER", clientUsername + " is Coordinator!"));
+			Member member = new Member(clientUsername,socket.getInetAddress(),socket.getPort(),true);
+			memberList.put(clientUsername, member);
+		} else {
+			Member member = new Member(clientUsername,socket.getInetAddress(),socket.getPort(), false);
+			memberList.put(clientUsername, member);
+		}
+		updateClientsMemberList();
+		clientCount++;
+	}
+	
+	public void serverMessage(Message serverMessage) {
+		// Might be useful when saying that ID is not unique
+		for(ClientHandler clientHandler : clientHandlers) {
+			try {
+				if(clientHandler.clientUsername.equals(clientUsername)) {
+					clientHandler.out.writeObject(serverMessage);
+					clientHandler.out.flush();
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				closeEverything(socket, in, out);
+			}
+		}
+	}
+	
+	public void approveUser(String username) {		
+		this.clientUsername = username;
+		clientHandlers.add(this);
+		addMember();
+		broadcastMessage(new Message("SERVER",username + " has entered the chat."));					
+	}
+	
+	public boolean isUniqueID(String username) {
+		for(ClientHandler clientHandler : clientHandlers) {
+			if(clientHandler.clientUsername.equals(username)) {
+				return false;
+			}
+		}
+		return true;		
+	}
+	
+	public void privateMessage(PrivateMessage message) {
+		for (ClientHandler ch : clientHandlers) {
+			if(ch.clientUsername.equals(message.getRecipient())) {
+				try {
+					ch.out.reset();
+					ch.out.writeObject(message);
+					ch.out.flush();
+				} catch (IOException e) {
+					e.printStackTrace();
+					closeEverything(socket, in, out);
+				}
+			}
+		}
+	}
+	
+	
+	
+	public void broadcastMessage(Message messageToSend) {
+		for (ClientHandler clientHandler : clientHandlers) {
+			try {
+				if (!clientHandler.clientUsername.equals(clientUsername)) {
+					clientHandler.out.writeObject(messageToSend);
+					clientHandler.out.flush();//Buffer needs flushing because message probably won't be big enough to fill the buffer
+				}
+			} catch (IOException e) {
+				closeEverything(socket, in, out);
+			}
+		}
+	}
+	
+	public boolean isCoordinator(String username){
+		if(memberList.get(username).getCoordinator()) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	public void assignCoordinator() {
+		try {
+			if(memberList.size()>0){
+				String username = memberList.keySet().iterator().next();
+				memberList.get(username).setCoordinator(true);
+				broadcastMessage(new Message("SERVER", username + " is now the coordinator!"));
+			}			
+		} catch (Exception e) {
+			System.out.println("Error assigning coordinator!");
+		}
+	}
+
+
+
+	
+	public synchronized void removeClientHandler() {
+		clientCount--;
+		clientHandlers.remove(this);
+		if (clientUsername != null) broadcastMessage(new Message("SERVER", clientUsername + " has left the chat!"));
+>>>>>>> Stashed changes
+		
+		if (isCoordinator(clientUsername)) {
+			memberList.remove(clientUsername);
+			assignCoordinator();
+		}
+		updateClientsMemberList();
+		
 		
 	}
 	
