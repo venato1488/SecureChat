@@ -1,53 +1,95 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+
 
 public class ClientHandler implements Runnable{
 	// Each object of this class is responsible for communicating with the clients
 	
-	public static ArrayList<ClientHandler> clientHandlers = new ArrayList<>(); // for keeping track of clients
+	public static ArrayList<ClientHandler> clientHandlers = new ArrayList<>();// for keeping track of clients
+	private static LinkedHashMap<String, Member> memberList = new LinkedHashMap<>();// for keeping track of members
+	public static int clientCount = 0;
 	private Socket socket; // used to establish client-server connection
-	private BufferedReader bufferedReader; // to read messages from client
-	private BufferedWriter bufferedWriter; // to send messages to client
+	private ObjectInputStream in; // to read messages from client
+	private ObjectOutputStream out; // to send messages to client
 	private String clientUsername;
 	
 	
-	public ClientHandler(Socket socket) {
+	public ClientHandler(Socket socket) throws ClassNotFoundException {
 		try {
 			this.socket = socket;
-			this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())); // buffer with byte stream wrapped inside char string for increased efficiency 
-			this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			this.clientUsername = bufferedReader.readLine();
-			clientHandlers.add(this);
-			broadcastMessage("SERVER: " + clientUsername + " has entered the chat!");
+			this.out = new ObjectOutputStream(socket.getOutputStream()); // buffer with byte stream wrapped inside char string for increased efficiency 
+			this.in = new ObjectInputStream(socket.getInputStream());
+			Object temporaryUsernameMessage = in.readObject();
+			String temporaryUsername = ((Message) temporaryUsernameMessage).getSender();
+			if (isUniqueID(temporaryUsername)){
+				approveUser(temporaryUsername);
+			} else {
+				denyUser();
+			}
+			
 		} catch (IOException e) {
-			closeEverything(socket, bufferedReader, bufferedWriter);
+			closeEverything(socket, in, out);
 		}
 	}
 	
 	
 	
+	private void denyUser() {
+		try {
+			out.writeObject(new Message("SERVER", "Username is not unique! Reconnect with different username!"));
+			out.flush();
+			closeEverything(socket, in, out);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+
+
 	@Override
 	public void run() {
 		// Everything that runs here runs on a separate thread
-		String msgFromClient;
+		Object msgFromClientObject;
 		
 		
 		while (socket.isConnected()) {
 			try {
-				msgFromClient = bufferedReader.readLine(); // program will halt here until receives a message. Thats why I run it on separate thread so the rest of app isn't stopped here
-				broadcastMessage(msgFromClient);
+				msgFromClientObject = in.readObject(); // program will halt here until receives a message. Thats why I run it on separate thread so the rest of app isn't stopped here
+				if (msgFromClientObject instanceof PrivateMessage) {
+					PrivateMessage msgFromClient = (PrivateMessage) msgFromClientObject;
+					privateMessage(msgFromClient);
+				} else if (msgFromClientObject instanceof Message) {
+					Message msgFromClient = (Message) msgFromClientObject;
+					broadcastMessage(msgFromClient);
+				}		
 			} catch (IOException e) {
-				closeEverything(socket, bufferedReader, bufferedWriter);
+				closeEverything(socket, in, out);
 				break;
+			} catch (ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}		
+	}
+	
+	public void updateClientsMemberList() {
+		for(ClientHandler ch : clientHandlers) {
+			try {
+				ch.out.reset(); /* resets previous state of out, without it local version of 
+								   memberList wasn't updating*/
+				ch.out.writeObject(memberList);
+				ch.out.flush();
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
-<<<<<<< Updated upstream
-=======
 	}
 	
 	public synchronized void addMember() {
@@ -152,7 +194,6 @@ public class ClientHandler implements Runnable{
 		clientCount--;
 		clientHandlers.remove(this);
 		if (clientUsername != null) broadcastMessage(new Message("SERVER", clientUsername + " has left the chat!"));
->>>>>>> Stashed changes
 		
 		if (isCoordinator(clientUsername)) {
 			memberList.remove(clientUsername);
@@ -163,39 +204,19 @@ public class ClientHandler implements Runnable{
 		
 	}
 	
-	public void broadcastMessage(String messageToSend) {
-		for (ClientHandler clientHandler : clientHandlers) {
-			try {
-				if (!clientHandler.clientUsername.equals(clientUsername)) {
-					clientHandler.bufferedWriter.write(messageToSend);
-					clientHandler.bufferedWriter.newLine();//Because client will wait for new line I explicitly put it so readLine works
-					clientHandler.bufferedWriter.flush();//Buffer needs flushing because message probably won't be big enough to fill the buffer
-				}
-			} catch (IOException e) {
-				closeEverything(socket, bufferedReader, bufferedWriter);
-			}
-		}
-	}
 	
-	
-	public void removeClientHandler() {
-		clientHandlers.remove(this);
-		broadcastMessage("SERVER: " + clientUsername + " has left the chat!");
-	}
-	
-	
-	public void closeEverything(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
+	public void closeEverything(Socket socket, ObjectInputStream in3, ObjectOutputStream out3) {
 		removeClientHandler();
 		try {
 			// Checking for null pointer and also only outer wrapper of stream is closed so inner are closing as well same for socket 
 			if (socket != null) {
 				socket.close();
 			}
-			if (bufferedReader != null) {
-				bufferedReader.close();
+			if (in3 != null) {
+				in3.close();
 			}
-			if (bufferedWriter != null) {
-				bufferedWriter.close();
+			if (out3 != null) {
+				out3.close();
 			}
 		} catch (IOException e) {
 			e.printStackTrace();

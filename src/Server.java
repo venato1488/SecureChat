@@ -1,8 +1,9 @@
-
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 
 public class Server {
 
@@ -18,7 +19,7 @@ public class Server {
 		try {
 			while (!serverSocket.isClosed()) {
 				Socket socket = serverSocket.accept(); //blocking method, program halted until client connects, when finally connects, a socket object is returned
-				System.out.println(new Date().toString() + " A new client with ip: "+ socket.getInetAddress() + " has connected");
+				printNewConnection(socket.getInetAddress().toString());
 				ClientHandler clientHandler = new ClientHandler(socket);
 				
 				Thread thread = new Thread(clientHandler);
@@ -26,6 +27,9 @@ public class Server {
 			}
 		} catch (IOException e) {
 			System.out.println("Hmmm");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	
@@ -39,11 +43,17 @@ public class Server {
 		}
 	}
 	
+	public void printNewConnection(String ipAddress) {
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
+		String timestamp = LocalDateTime.now().format(formatter);
+		System.out.println('[' + timestamp + ']' + ' ' + ipAddress + " has connected");
+	}
+	
 	public static void main(String[] args) throws IOException {
 		
 		ServerSocket serverSocket = new ServerSocket(9999);
 		Server server = new Server(serverSocket);
+		System.out.println("Server is up and running.");
 		server.startServer();
-		
 	}
 }

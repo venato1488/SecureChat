@@ -1,67 +1,61 @@
-
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-<<<<<<< Updated upstream
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-=======
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ConnectException;
->>>>>>> Stashed changes
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
-<<<<<<< Updated upstream
-=======
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.NoSuchElementException;
->>>>>>> Stashed changes
 import java.util.Scanner;
 
 public class Client {
 	
 	private Socket socket;
-	private BufferedReader bufferedReader;
-	private BufferedWriter bufferedWriter;
+	private ObjectInputStream in; // to read messages from server
+	private ObjectOutputStream out;
 	private String username;
+	private LinkedHashMap<String, Member> memberList;
 
 	public Client(Socket socket, String username) {
 		try {
 			this.socket = socket;
-			this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+			this.in = new ObjectInputStream(socket.getInputStream());
+			this.out = new ObjectOutputStream(socket.getOutputStream());
 			this.username = username;
+			
+			
+			
 		
 		} catch (IOException e) {
-			closeEverything(socket, bufferedReader, bufferedWriter);
+			e.printStackTrace();
+			closeEverything(socket, in, out);
 		}
 	}
 	
 	public void sendMessage() {
 		try {
 			//Because at first connection client has to enter username first
-			bufferedWriter.write(username);
-			bufferedWriter.newLine();
-			bufferedWriter.flush();
+			out.writeObject(new Message(username, null));			
+			out.flush();
 			
-			Scanner scanner = new Scanner(System.in);
 			while(socket.isConnected()) {
+				Scanner scanner = new Scanner(System.in);
 				String messageToSend = scanner.nextLine();// after user press enter it will be captured in messageToSend
-				bufferedWriter.write(username + ": " + messageToSend);
-				bufferedWriter.newLine();
-				bufferedWriter.flush();
+				if (messageToSend.length() != 0) {
+					if (messageToSend.startsWith("/p ")) {
+						sendPrivateMessage(messageToSend);
+					} else if (messageToSend.equals("/members")) {
+						showMembers();
+					} else {
+						out.writeObject(new Message(username, messageToSend));
+						out.flush();
+					}
+				}
 			}
 		} catch (IOException e) {
-<<<<<<< Updated upstream
-			closeEverything(socket, bufferedReader, bufferedWriter);
-		}
-	}
-	
-	public void listerForMessage() {
-=======
 			e.printStackTrace();
 			closeEverything(socket, in, out);
 		} catch (NoSuchElementException e) {
@@ -120,58 +114,82 @@ public class Client {
 	}
 	
 	public void listenForMessage() {
->>>>>>> Stashed changes
 		new Thread(new Runnable() {
-			// Anonimous thread
+			// Anonymous thread
+			
 			@Override
 			public void run() {
-				String msgFromChat;
+				Object msgFromChat;
 				
 				while (socket.isConnected()) {
 					
 					try {
-						msgFromChat = bufferedReader.readLine();
-						System.out.println(msgFromChat);
-					} catch (IOException e) {
-						closeEverything(socket, bufferedReader, bufferedWriter);
-					}
+						msgFromChat = in.readObject(); // read serialized data from ClientHandler
+						if (msgFromChat instanceof LinkedHashMap) {
+							
+							@SuppressWarnings("unchecked")
+							LinkedHashMap<String, Member> memberMap = (LinkedHashMap<String, Member>) msgFromChat;
+							updateMemberMap(memberMap);
+							
+						} else if (msgFromChat instanceof PrivateMessage) {
+							PrivateMessage privMessage = (PrivateMessage) msgFromChat;
+							printPrivateMessage(privMessage);
+						} else if (msgFromChat instanceof Message) {
+							Message message = (Message) msgFromChat; // casting object to its original type
+							printBroadcastMessage(message);
+						}
+					} catch (SocketException e) {
+						System.out.println("Oops, something went wrong. :(");
+						break;
+						//e.printStackTrace();
+					} catch (IOException e1) {
+						//e1.printStackTrace();
+						closeEverything(socket, in, out);
+					} catch (ClassNotFoundException e) {
+						System.out.println("Oops, something went wrong. :(");
+						//e.printStackTrace();
+					} 
 				}
-				
-			}
-			
-		}).start();
-			
+			}			
+		}).start();			
 	}
 	
 	
-	public void closeEverything(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
+	
+	public synchronized void updateMemberMap(LinkedHashMap<String, Member> newMemberList) {
+		memberList = newMemberList;
+	}
+	
+	public void printBroadcastMessage(Message msg) {
+		System.out.println("["+timeStampFormatter(msg.getTimestamp())+"] "+msg.getSender()+": "+msg.getContent());
+	}
+	
+	public void printPrivateMessage(PrivateMessage pMsg) {
+		System.out.println("["+timeStampFormatter(pMsg.getTimestamp())+"] "+"Private message from " + pMsg.getSender() + ": " + pMsg.getContent());
+	}	
+	
+	public String timeStampFormatter(LocalDateTime timestamp) {
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+		String formattedTimestamp = timestamp.format(formatter);
+		return formattedTimestamp;
+		
+	}
+	public void closeEverything(Socket socket, ObjectInputStream in2, ObjectOutputStream out2) {
 		try {
 			// Checking for null pointer and also only outer wrapper of stream is closed so inner are closing as well same for socket 
 			if (socket != null) {
 				socket.close();
 			}
-			if (bufferedReader != null) {
-				bufferedReader.close();
+			if (in2 != null) {
+				in2.close();
 			}
-			if (bufferedWriter != null) {
-				bufferedWriter.close();
+			if (out2 != null) {
+				out2.close();
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
-<<<<<<< Updated upstream
-	
-	
-	public static void main(String[] args) throws UnknownHostException, IOException {
-		Scanner scanner = new Scanner(System.in);
-		System.out.println("Enter your username: ");
-		String username = scanner.nextLine();
-		Socket socket = new Socket("localhost", 9999);
-		Client client = new Client(socket, username);
-		client.listerForMessage();
-		client.sendMessage();
-=======
 
 	public void printGreeting(){
 		System.out.println("Welcome to the chatroom!");
@@ -223,6 +241,5 @@ public class Client {
 		} catch (IOException e) {
 			System.out.println("Oops, something went wrong. :(");
 		}
->>>>>>> Stashed changes
 	}
 }
