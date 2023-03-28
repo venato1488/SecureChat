@@ -22,6 +22,7 @@ public class Client {
 	private LinkedHashMap<String, Member> memberList;
 
 	public Client(Socket socket, String username) {
+		// 
 		try {
 			this.socket = socket;
 			// BufferedInputStream and BufferedOutputStream are used to increase efficiency
