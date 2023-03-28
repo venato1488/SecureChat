@@ -1,3 +1,5 @@
+import java.io.BufferedInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -22,7 +24,8 @@ public class Client {
 	public Client(Socket socket, String username) {
 		try {
 			this.socket = socket;
-			this.in = new ObjectInputStream(socket.getInputStream());
+			// BufferedInputStream and BufferedOutputStream are used to increase efficiency
+			this.in = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()));
 			this.out = new ObjectOutputStream(socket.getOutputStream());
 			this.username = username;
 			
@@ -36,18 +39,21 @@ public class Client {
 	}
 	
 	public void sendMessage() {
+		// This method is responsible for sending messages to the server
 		try {
 			//Because at first connection client has to enter username first
-			out.writeObject(new Message(username, null));			
+			out.writeObject(new Message(username, " "));			
 			out.flush();
 			
-			while(socket.isConnected()) {
+			while(socket.isConnected() && !socket.isClosed()) {
 				Scanner scanner = new Scanner(System.in);
 				String messageToSend = scanner.nextLine();// after user press enter it will be captured in messageToSend
 				if (messageToSend.length() != 0) {
 					if (messageToSend.startsWith("/p ")) {
 						sendPrivateMessage(messageToSend);
-					} else if (messageToSend.equals("/members")) {
+					} else if(messageToSend.startsWith("/kick ")){
+						sendKickRequest(messageToSend);
+					}else if (messageToSend.equals("/members")) {
 						showMembers();
 					} else {
 						out.writeObject(new Message(username, messageToSend));
@@ -55,8 +61,12 @@ public class Client {
 					}
 				}
 			}
+			/*if (socket.isClosed()) {
+				System.out.println("Connection closed");
+				closeEverything(socket, in, out);
+			}*/
 		} catch (IOException e) {
-			e.printStackTrace();
+			System.out.println("Server closed the connection");
 			closeEverything(socket, in, out);
 		} catch (NoSuchElementException e) {
 			closeEverything(socket, in, out);
@@ -66,28 +76,44 @@ public class Client {
 	
 
 	public void showMembers() {
-    	System.out.println("                   [LIST OF ONLINE MEMBERS]");
+		// This method is responsible for showing the list of members
+    	System.out.println("  ╔════════════════════════════════════════════════════════════╗");
+		System.out.println("  ║               [LIST OF ONLINE MEMBERS]                     ║");
+		System.out.println("  ║------------------------------------------------------------║");
+		System.out.println("  ║  Username        IP Address           Port    Coordinator  ║");
+		System.out.println("  ║------------------------------------------------------------║");
 
-    	String format = "| %-20s | %-15s | %-6s | %-12s |%n";
-    	// Print table headers
-    	System.out.format("+----------------------+-----------------+--------+--------------+%n");
-    	System.out.format("| Username             | IP Address      | Port   | Coordinator  |%n");
-    	System.out.format("+----------------------+-----------------+--------+--------------+%n");
+		for (String key : memberList.keySet()) {
+			Member member = memberList.get(key);
+			String username = member.getUsername();
+			String ipAddress = member.getIpAddress().toString();
+			int port = member.getPort();
+			String coordinator = member.getCoordinator() ? "Yes" : "No";
 
-    	for (String key : memberList.keySet()) {
-        	Member member = memberList.get(key);
-        	String username = member.getUsername();
-       		String ipAddress = member.getIpAddress().toString();
-        	int port = member.getPort();
-        	String coordinator = member.getCoordinator() ? "Yes" : "No";
+			System.out.format("  ║  %-15s %-20s %-6s  %-12s ║%n", username, ipAddress, port, coordinator);
+		}
 
-        	System.out.format(format, username, ipAddress, port, coordinator);
-    	}
+		System.out.println("  ╚════════════════════════════════════════════════════════════╝");
 
-    // Print table footer
-    System.out.format("+----------------------+-----------------+--------+--------------+%n");
 	}
 
+	public void sendKickRequest(String msgToSend) {
+		// This method is responsible for sending kick request to the server 
+		String[] msgParts = msgToSend.split(" ");
+		String recipient = msgParts[1];
+		String content = "/kick";
+		if (recipientExist(recipient)) {
+			try {
+				out.writeObject(new PrivateMessage(username, content, recipient));
+				out.flush();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		} else {
+			System.out.println("Recipient doesn't exist! Remember, to kick a client type /kick <Username>");
+		}
+		
+	}
 	
 	public void sendPrivateMessage(String msgToSend) {
 		String[] msgParts = msgToSend.split(" ");
@@ -121,7 +147,7 @@ public class Client {
 			public void run() {
 				Object msgFromChat;
 				
-				while (socket.isConnected()) {
+				while (socket.isConnected() && !socket.isClosed()) {
 					
 					try {
 						msgFromChat = in.readObject(); // read serialized data from ClientHandler
@@ -142,30 +168,53 @@ public class Client {
 						System.out.println("Oops, something went wrong. :(");
 						break;
 						//e.printStackTrace();
+					} catch (EOFException e) {
+						System.out.println("Seems like you have been kicked from the chat. :(");
+						break;
 					} catch (IOException e1) {
-						//e1.printStackTrace();
+						System.out.println("IO Exception while listening to messages. :(");
+						e1.printStackTrace();
 						closeEverything(socket, in, out);
 					} catch (ClassNotFoundException e) {
-						System.out.println("Oops, something went wrong. :(");
+						System.out.println("Class not found. :(");
 						//e.printStackTrace();
 					} 
-				}
+				}	
 			}			
 		}).start();			
 	}
 	
-	
+	public boolean msgFromCoordinator(String sender) {
+		if (memberList != null) {
+			for (String key : memberList.keySet()) {
+				if (memberList.get(key).getCoordinator()) {
+					return memberList.get(key).getUsername().equals(sender);
+				}
+			}
+		}
+		
+		return false;
+	}
 	
 	public synchronized void updateMemberMap(LinkedHashMap<String, Member> newMemberList) {
 		memberList = newMemberList;
 	}
 	
 	public void printBroadcastMessage(Message msg) {
-		System.out.println("["+timeStampFormatter(msg.getTimestamp())+"] "+msg.getSender()+": "+msg.getContent());
+		if (!msgFromCoordinator(msg.getSender())) {
+			System.out.println("["+timeStampFormatter(msg.getTimestamp())+"] "+msg.getSender()+": "+msg.getContent());
+		} else {
+			System.out.println("["+timeStampFormatter(msg.getTimestamp())+"] [COORDINATOR] "+msg.getSender()+": "+msg.getContent());
+		}
 	}
 	
 	public void printPrivateMessage(PrivateMessage pMsg) {
-		System.out.println("["+timeStampFormatter(pMsg.getTimestamp())+"] "+"Private message from " + pMsg.getSender() + ": " + pMsg.getContent());
+		if (!msgFromCoordinator(pMsg.getSender())) {
+			System.out.println("["+timeStampFormatter(pMsg.getTimestamp())+"] "+"Private message from " + pMsg.getSender() + ": " + pMsg.getContent());
+		} else {
+			System.out.println("["+timeStampFormatter(pMsg.getTimestamp())+"] "+"Private message from [COORDINATOR] " + pMsg.getSender() + ": " + pMsg.getContent());
+		}
+		
 	}	
 	
 	public String timeStampFormatter(LocalDateTime timestamp) {
@@ -187,15 +236,19 @@ public class Client {
 				out2.close();
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			// Nothing I can do at this point
 		}
+		System.exit(0);
 	}
 
 	public void printGreeting(){
-		System.out.println("Welcome to the chatroom!");
-		System.out.println("To send a private message type /p <Recipient> <Message>");
-		System.out.println("To see the list of online members type /members");
-		System.out.println("To exit the chatroom press Ctrl+C");
+		System.out.println("  ╔════════════════════════════════════════════════════════════╗");
+		System.out.println("  ║                 Welcome to the chatroom!                   ║");
+		System.out.println("  ║    To broadcast a message just type it in command line     ║");
+		System.out.println("  ║    To send a private message type /p <Recipient> <Message> ║");
+		System.out.println("  ║    To see the list of online members type /members         ║");
+		System.out.println("  ║    To exit the chatroom press Ctrl+C                       ║");
+		System.out.println("  ╚════════════════════════════════════════════════════════════╝");
 	}
 
 	public static boolean isValidUsername(String username) {
@@ -204,7 +257,7 @@ public class Client {
 		}
 		for(int i=0; i < username.length(); i++) {
 			char c = username.charAt(i);
-			if (c == '!' || c == '@' || c == '#' || c == '$' || c == '%' || c == '^' ||
+			if (c == '!' || c == '@' || c == '#' || c == '$' || c == '%' || c == '^' || c == ' ' ||
 		        c == '&' || c == '*' || c == '(' || c == ')' || c == '+' || c == '-' || c == '=') {
 				return false;
 			}
@@ -214,13 +267,13 @@ public class Client {
 	
 	public static void main(String[] args) throws UnknownHostException, IOException {
 		try (Scanner scanner = new Scanner(System.in)) {
-			System.out.println("Enter IP address and port of the server in the format <IP address> <port>: ");
+			/*System.out.println("Enter IP address and port of the server in the format <IP address> <port>: ");
 			String ipAndPort = scanner.nextLine();
 			String[] ipAndPortArray = ipAndPort.split(" ");
 			String ipAddress = ipAndPortArray[0];
-			int port = Integer.parseInt(ipAndPortArray[1]);
+			int port = Integer.parseInt(ipAndPortArray[1]);   */
 			
-			Socket socket = new Socket(ipAddress, port);
+			Socket socket = new Socket("localhost", 9999);
 			
 			System.out.println("Enter your username: ");
 			String username = scanner.nextLine();

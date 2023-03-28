@@ -11,7 +11,6 @@ public class ClientHandler implements Runnable{
 	
 	public static ArrayList<ClientHandler> clientHandlers = new ArrayList<>();// for keeping track of clients
 	private static LinkedHashMap<String, Member> memberList = new LinkedHashMap<>();// for keeping track of members
-	public static int clientCount = 0;
 	private Socket socket; // used to establish client-server connection
 	private ObjectInputStream in; // to read messages from client
 	private ObjectOutputStream out; // to send messages to client
@@ -60,14 +59,23 @@ public class ClientHandler implements Runnable{
 		while (socket.isConnected()) {
 			try {
 				msgFromClientObject = in.readObject(); // program will halt here until receives a message. Thats why I run it on separate thread so the rest of app isn't stopped here
-				if (msgFromClientObject instanceof PrivateMessage) {
-					PrivateMessage msgFromClient = (PrivateMessage) msgFromClientObject;
-					privateMessage(msgFromClient);
-				} else if (msgFromClientObject instanceof Message) {
-					Message msgFromClient = (Message) msgFromClientObject;
-					broadcastMessage(msgFromClient);
-				}		
+				if (msgFromClientObject != null){
+					if (msgFromClientObject instanceof PrivateMessage) {
+						PrivateMessage msgFromClient = (PrivateMessage) msgFromClientObject;
+						if (msgFromClient.getContent().equals("/kick")){
+							kickMember(msgFromClient);
+						} else {
+							privateMessage(msgFromClient);
+						}
+						
+					} else if (msgFromClientObject instanceof Message) {
+						Message msgFromClient = (Message) msgFromClientObject;
+						broadcastMessage(msgFromClient);
+					}		
+				}
+				
 			} catch (IOException e) {
+				System.out.println("Client " + clientUsername + " has disconnected.");
 				closeEverything(socket, in, out);
 				break;
 			} catch (ClassNotFoundException e) {
@@ -77,25 +85,57 @@ public class ClientHandler implements Runnable{
 		}		
 	}
 	
-	public void updateClientsMemberList() {
-		for(ClientHandler ch : clientHandlers) {
-			try {
-				ch.out.reset(); /* resets previous state of out, without it local version of 
-								   memberList wasn't updating*/
-				ch.out.writeObject(memberList);
-				ch.out.flush();
-				
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+	public synchronized void kickMember(PrivateMessage message){
+		if (isCoordinator(message.getSender())) {
+			for (ClientHandler clientHandler : clientHandlers) {
+				if (clientHandler.clientUsername.equals(message.getRecipient())){
+					serverMessage("You have kicked " + message.getRecipient() + " from the chat.");
+					broadcastMessage(new Message("SERVER", message.getRecipient() + " has been kicked from the chat."));
+					try {
+						if (clientHandler.socket != null){
+							clientHandler.socket.close();
+						}
+						if (clientHandler.in != null){
+							clientHandler.in.close();
+						}
+						if (clientHandler.out != null){
+							clientHandler.out.close();
+						}
+					} catch (IOException e) {
+						// TODO: handle exception
+						System.out.println("Something went wrong while kicking user!");
+					}
+					clientHandlers.remove(clientHandler);
+					memberList.remove(clientHandler.clientUsername);
+					updateClientsMemberList();
+					break;
+				}
 			}
+		} else {
+			serverMessage("Permission denied! You are not the coordinator!");
 		}
+	}
+
+	public void updateClientsMemberList() {
+		if (clientHandlers.size() != 0){
+			for(ClientHandler ch : clientHandlers) {
+				try {
+					ch.out.reset(); /* resets previous state of out, without it local version of 
+									   memberList wasn't updating*/
+					ch.out.writeObject(memberList);
+					ch.out.flush();
+					
+				} catch (IOException e) {
+					System.out.println("Something went wrong while updating clients member list!");
+					e.printStackTrace();
+				}
+			}
+		}		
 	}
 	
 	public synchronized void addMember() {
-		// TODO reasignment of coordinator in case he leaves
-		if(clientCount==0) {
-			serverMessage(new Message("SERVER", clientUsername + " is Coordinator!"));
+		if(memberList.size() == 0) {
+			serverMessage(clientUsername + " you are Coordinator because you are the first one to join the chat!\nType /kick username to kick a user from the chat.");
 			Member member = new Member(clientUsername,socket.getInetAddress(),socket.getPort(),true);
 			memberList.put(clientUsername, member);
 		} else {
@@ -103,16 +143,16 @@ public class ClientHandler implements Runnable{
 			memberList.put(clientUsername, member);
 		}
 		updateClientsMemberList();
-		clientCount++;
 	}
 	
-	public void serverMessage(Message serverMessage) {
-		// Might be useful when saying that ID is not unique
+	public void serverMessage(String message) {
+		Message serverMessage = new Message("SERVER", message);
 		for(ClientHandler clientHandler : clientHandlers) {
 			try {
 				if(clientHandler.clientUsername.equals(clientUsername)) {
 					clientHandler.out.writeObject(serverMessage);
 					clientHandler.out.flush();
+					break;
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -120,6 +160,8 @@ public class ClientHandler implements Runnable{
 			}
 		}
 	}
+
+	
 	
 	public void approveUser(String username) {		
 		this.clientUsername = username;
@@ -144,6 +186,7 @@ public class ClientHandler implements Runnable{
 					ch.out.reset();
 					ch.out.writeObject(message);
 					ch.out.flush();
+					break;
 				} catch (IOException e) {
 					e.printStackTrace();
 					closeEverything(socket, in, out);
@@ -158,21 +201,27 @@ public class ClientHandler implements Runnable{
 		for (ClientHandler clientHandler : clientHandlers) {
 			try {
 				if (!clientHandler.clientUsername.equals(clientUsername)) {
+					clientHandler.out.reset();
 					clientHandler.out.writeObject(messageToSend);
 					clientHandler.out.flush();//Buffer needs flushing because message probably won't be big enough to fill the buffer
+					
 				}
 			} catch (IOException e) {
+				e.printStackTrace();
 				closeEverything(socket, in, out);
 			}
 		}
 	}
 	
 	public boolean isCoordinator(String username){
-		if(memberList.get(username).getCoordinator()) {
-			return true;
-		} else {
-			return false;
+		if (memberList.get(username) != null) {
+			if (memberList.get(username).getCoordinator()) {
+				return true;
+			} else {
+				return false;
+			}
 		}
+		return false;
 	}
 
 	public void assignCoordinator() {
@@ -191,15 +240,19 @@ public class ClientHandler implements Runnable{
 
 	
 	public synchronized void removeClientHandler() {
-		clientCount--;
-		clientHandlers.remove(this);
-		if (clientUsername != null) broadcastMessage(new Message("SERVER", clientUsername + " has left the chat!"));
-		
-		if (isCoordinator(clientUsername)) {
-			memberList.remove(clientUsername);
-			assignCoordinator();
-		}
-		updateClientsMemberList();
+		//if (clientHandlers.size()>0){
+			
+			
+			
+			if (isCoordinator(clientUsername)) {
+				memberList.remove(clientUsername);
+				assignCoordinator();
+			} else {
+				memberList.remove(clientUsername);
+			}
+			clientHandlers.remove(this);
+			updateClientsMemberList();
+	
 		
 		
 	}
@@ -207,6 +260,7 @@ public class ClientHandler implements Runnable{
 	
 	public void closeEverything(Socket socket, ObjectInputStream in3, ObjectOutputStream out3) {
 		removeClientHandler();
+		if (clientUsername != null) broadcastMessage(new Message("SERVER", clientUsername + " has left the chat!"));
 		try {
 			// Checking for null pointer and also only outer wrapper of stream is closed so inner are closing as well same for socket 
 			if (socket != null) {

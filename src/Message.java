@@ -5,7 +5,7 @@ public class Message implements Serializable{
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L; //This will help maintain compatibility between serialized and deserialized objects.
 	private String sender;
 	private String recipient;
 	private LocalDateTime timestamp;
