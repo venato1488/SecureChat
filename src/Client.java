@@ -117,6 +117,7 @@ public class Client {
 	}
 	
 	public void sendPrivateMessage(String msgToSend) {
+		// This method is responsible for sending private message to the server
 		String[] msgParts = msgToSend.split(" ");
 		String recipient = msgParts[1];
 		String content = msgToSend.substring(3 + recipient.length()+1);
@@ -268,13 +269,13 @@ public class Client {
 	
 	public static void main(String[] args) throws UnknownHostException, IOException {
 		try (Scanner scanner = new Scanner(System.in)) {
-			/*System.out.println("Enter IP address and port of the server in the format <IP address> <port>: ");
+			System.out.println("Enter IP address and port of the server in the format <IP address> <port>: ");
 			String ipAndPort = scanner.nextLine();
 			String[] ipAndPortArray = ipAndPort.split(" ");
 			String ipAddress = ipAndPortArray[0];
-			int port = Integer.parseInt(ipAndPortArray[1]);   */
+			int port = Integer.parseInt(ipAndPortArray[1]);   
 			
-			Socket socket = new Socket("localhost", 9999);
+			Socket socket = new Socket(ipAddress, port);
 			
 			System.out.println("Enter your username: ");
 			String username = scanner.nextLine();

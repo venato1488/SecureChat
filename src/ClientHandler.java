@@ -43,7 +43,6 @@ public class ClientHandler implements Runnable{
 			out.flush();
 			closeEverything(socket, in, out);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -79,7 +78,6 @@ public class ClientHandler implements Runnable{
 				closeEverything(socket, in, out);
 				break;
 			} catch (ClassNotFoundException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}		
@@ -102,7 +100,6 @@ public class ClientHandler implements Runnable{
 							clientHandler.out.close();
 						}
 					} catch (IOException e) {
-						// TODO: handle exception
 						System.out.println("Something went wrong while kicking user!");
 					}
 					clientHandlers.remove(clientHandler);
@@ -240,21 +237,15 @@ public class ClientHandler implements Runnable{
 
 	
 	public synchronized void removeClientHandler() {
-		//if (clientHandlers.size()>0){
-			
-			
-			
-			if (isCoordinator(clientUsername)) {
-				memberList.remove(clientUsername);
-				assignCoordinator();
-			} else {
-				memberList.remove(clientUsername);
-			}
-			clientHandlers.remove(this);
-			updateClientsMemberList();
-	
-		
-		
+		// Remove client from memberList and update clients memberList if coordinator is removed assign new coordinator
+		if (isCoordinator(clientUsername)) {
+			memberList.remove(clientUsername);
+			assignCoordinator();
+		} else {
+			memberList.remove(clientUsername);
+		}
+		clientHandlers.remove(this);
+		updateClientsMemberList();
 	}
 	
 	
