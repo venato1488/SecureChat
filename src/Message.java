@@ -7,7 +7,6 @@ public class Message implements Serializable{
 	 */
 	private static final long serialVersionUID = 1L; //This will help maintain compatibility between serialized and deserialized objects.
 	private String sender;
-	private String recipient;
 	private LocalDateTime timestamp;
 	private String content;
 	
@@ -20,11 +19,7 @@ public class Message implements Serializable{
 	public String getSender() {
 		return sender;
 	}
-	
-	public String getRecipient() {
-		return recipient;
-	}
-	
+		
 	public String getContent() {
 		return content;
 	}

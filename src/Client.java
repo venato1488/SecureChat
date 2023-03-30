@@ -287,7 +287,7 @@ public class Client {
 			client.printGreeting();
 			client.listenForMessage();
 			client.sendMessage();
-		} catch (NumberFormatException e) {
+		} catch (IllegalArgumentException e){
 			System.out.println("Invalid port number!");
 		} catch (ArrayIndexOutOfBoundsException e) {
 			System.out.println("Invalid IP address or port number!");
