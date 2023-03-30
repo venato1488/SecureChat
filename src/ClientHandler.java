@@ -39,7 +39,7 @@ public class ClientHandler implements Runnable{
 	
 	private void denyUser() {
 		try {
-			out.writeObject(new Message("SERVER", "Username is not unique! Reconnect with different username!"));
+			out.writeObject(MessageFactory.createMessage(MessageFactory.MessageType.SERVER, null, "Username is not unique! Reconnect with different username!", null));
 			out.flush();
 			closeEverything(socket, in, out);
 		} catch (IOException e) {
@@ -88,7 +88,7 @@ public class ClientHandler implements Runnable{
 			for (ClientHandler clientHandler : clientHandlers) {
 				if (clientHandler.clientUsername.equals(message.getRecipient())){
 					serverMessage("You have kicked " + message.getRecipient() + " from the chat.");
-					broadcastMessage(new Message("SERVER", message.getRecipient() + " has been kicked from the chat."));
+					broadcastMessage(MessageFactory.createMessage(MessageFactory.MessageType.SERVER, null, message.getRecipient() + " has been kicked from the chat.", null));
 					try {
 						if (clientHandler.socket != null){
 							clientHandler.socket.close();
@@ -143,7 +143,7 @@ public class ClientHandler implements Runnable{
 	}
 	
 	public void serverMessage(String message) {
-		Message serverMessage = new Message("SERVER", message);
+		MessageInterface serverMessage = MessageFactory.createMessage(MessageFactory.MessageType.SERVER, null, message, null);
 		for(ClientHandler clientHandler : clientHandlers) {
 			try {
 				if(clientHandler.clientUsername.equals(clientUsername)) {
@@ -164,7 +164,7 @@ public class ClientHandler implements Runnable{
 		this.clientUsername = username;
 		clientHandlers.add(this);
 		addMember();
-		broadcastMessage(new Message("SERVER",username + " has entered the chat."));					
+		broadcastMessage(MessageFactory.createMessage(MessageFactory.MessageType.SERVER, null, username + " has entered the chat.", null));				
 	}
 	
 	public boolean isUniqueID(String username) {
@@ -194,12 +194,12 @@ public class ClientHandler implements Runnable{
 	
 	
 	
-	public void broadcastMessage(Message messageToSend) {
+	public void broadcastMessage(MessageInterface message) {
 		for (ClientHandler clientHandler : clientHandlers) {
 			try {
 				if (!clientHandler.clientUsername.equals(clientUsername)) {
 					clientHandler.out.reset();
-					clientHandler.out.writeObject(messageToSend);
+					clientHandler.out.writeObject(message);
 					clientHandler.out.flush();//Buffer needs flushing because message probably won't be big enough to fill the buffer
 					
 				}
@@ -226,7 +226,7 @@ public class ClientHandler implements Runnable{
 			if(memberList.size()>0){
 				String username = memberList.keySet().iterator().next();
 				memberList.get(username).setCoordinator(true);
-				broadcastMessage(new Message("SERVER", username + " is now the coordinator!"));
+				broadcastMessage(MessageFactory.createMessage(MessageFactory.MessageType.SERVER, null, username + " is now the coordinator!", null));
 			}			
 		} catch (Exception e) {
 			System.out.println("Error assigning coordinator!");
@@ -251,7 +251,7 @@ public class ClientHandler implements Runnable{
 	
 	public void closeEverything(Socket socket, ObjectInputStream in3, ObjectOutputStream out3) {
 		removeClientHandler();
-		if (clientUsername != null) broadcastMessage(new Message("SERVER", clientUsername + " has left the chat!"));
+		if (clientUsername != null) broadcastMessage(MessageFactory.createMessage(MessageFactory.MessageType.SERVER, null, clientUsername + " has left the chat!", null));
 		try {
 			// Checking for null pointer and also only outer wrapper of stream is closed so inner are closing as well same for socket 
 			if (socket != null) {

@@ -1,7 +1,7 @@
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-public class Message implements Serializable{
+public class Message implements Serializable, MessageInterface{
 	/**
 	 * 
 	 */
@@ -26,5 +26,15 @@ public class Message implements Serializable{
 	
 	public LocalDateTime getTimestamp() {
 		return timestamp;
+	}
+
+	@Override
+	public void setContent(String newContent) {
+		this.content = newContent;
+	}
+
+	@Override
+	public void setSender(String sender) {
+		this.sender = sender;
 	}
 }

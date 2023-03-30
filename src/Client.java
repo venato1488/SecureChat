@@ -43,7 +43,7 @@ public class Client {
 		// This method is responsible for sending messages to the server
 		try {
 			//Because at first connection client has to enter username first
-			out.writeObject(new Message(username, " "));			
+			out.writeObject(MessageFactory.createMessage(MessageFactory.MessageType.USERNAME, username, null, null));			
 			out.flush();
 			
 			while(socket.isConnected() && !socket.isClosed()) {
@@ -102,10 +102,9 @@ public class Client {
 		// This method is responsible for sending kick request to the server 
 		String[] msgParts = msgToSend.split(" ");
 		String recipient = msgParts[1];
-		String content = "/kick";
 		if (recipientExist(recipient)) {
 			try {
-				out.writeObject(new PrivateMessage(username, content, recipient));
+				out.writeObject(MessageFactory.createMessage(MessageFactory.MessageType.PRIVATE, username, "/kick", recipient));
 				out.flush();
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -123,7 +122,7 @@ public class Client {
 		String content = msgToSend.substring(3 + recipient.length()+1);
 		if (recipientExist(recipient)) {
 			try {
-				out.writeObject(new PrivateMessage(username, content, recipient));
+				out.writeObject(MessageFactory.createMessage(MessageFactory.MessageType.PRIVATE, username, content, recipient));
 				out.flush();
 			} catch (IOException e) {
 				e.printStackTrace();

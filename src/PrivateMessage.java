@@ -1,4 +1,4 @@
-public class PrivateMessage extends Message{
+public class PrivateMessage extends Message {
 	/**
 	 * 
 	 */
@@ -12,5 +12,9 @@ public class PrivateMessage extends Message{
 	
 	public String getRecipient() {
 		return recipient;
+	}
+
+	public void setRecipient(String recipient) {
+		this.recipient = recipient;
 	}
 }
