@@ -56,24 +56,9 @@ public class Server {
         System.setProperty("javax.net.ssl.keyStorePassword", "my_keystore_password");
         System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
 		
-
-
 		SSLServerSocketFactory sslssf = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
 		SSLServerSocket sslSocket = (SSLServerSocket) sslssf.createServerSocket(9999);
 
-		//Get the list of supported cipher suites
-		String[] supportedCipherSuites = sslssf.getSupportedCipherSuites();
-		
-		for (String cipherSuite : supportedCipherSuites) {
-			System.out.println(cipherSuite);
-		}
-		
-		//Get the list of default cipher suites
-		/*String[] defaultCipherSuites = sslssf.getDefaultCipherSuites();
-        
-        for (String cipherSuite : defaultCipherSuites) {
-            System.out.println(cipherSuite);
-		}*/
 		Server server = new Server(sslSocket);
 		System.out.println("Server is up and running.");
 		server.startServer();
