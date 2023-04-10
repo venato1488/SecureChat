@@ -13,6 +13,9 @@ import java.util.LinkedHashMap;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
 public class Client {
 	
 	private Socket socket;
@@ -267,6 +270,11 @@ public class Client {
 	}
 	
 	public static void main(String[] args) throws UnknownHostException, IOException {
+		System.setProperty("javax.net.ssl.trustStore", "E:\\keydir\\client-truststore.p12");
+        System.setProperty("javax.net.ssl.trustStorePassword", "my_truststore_password");
+        System.setProperty("javax.net.ssl.trustStoreType", "PKCS12");
+	
+		
 		try (Scanner scanner = new Scanner(System.in)) {
 			System.out.println("Enter IP address and port of the server in the format <IP address> <port>: ");
 			String ipAndPort = scanner.nextLine();
@@ -274,11 +282,12 @@ public class Client {
 			String ipAddress = ipAndPortArray[0];
 			int port = Integer.parseInt(ipAndPortArray[1]);   
 			
-			Socket socket = new Socket(ipAddress, port);
+			SSLSocketFactory sslSocketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+			SSLSocket socket = (SSLSocket) sslSocketFactory.createSocket(ipAddress, port);
 			
 			System.out.println("Enter your username: ");
 			String username = scanner.nextLine();
-			if (isValidUsername(username) == false) {
+			if (!isValidUsername(username)) {
 				System.out.println("Invalid username! Username must be at least 3 characters long and can't contain special characters.");
 				System.exit(0);
 			}
@@ -293,6 +302,7 @@ public class Client {
 		} catch (ConnectException e) {
 			System.out.println("Connection refused! Server is not running or wrong IP address and port number.");
 		} catch (IOException e) {
+			e.printStackTrace();
 			System.out.println("Oops, something went wrong. :(");
 		}
 	}

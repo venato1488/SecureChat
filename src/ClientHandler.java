@@ -5,6 +5,8 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 
+import javax.net.ssl.SSLSocket;
+
 
 public class ClientHandler implements Runnable{
 	// Each object of this class is responsible for communicating with the clients
@@ -17,7 +19,7 @@ public class ClientHandler implements Runnable{
 	private String clientUsername;
 	
 	
-	public ClientHandler(Socket socket) throws ClassNotFoundException {
+	public ClientHandler(SSLSocket socket) throws ClassNotFoundException {
 		try {
 			this.socket = socket;
 			this.out = new ObjectOutputStream(socket.getOutputStream()); // buffer with byte stream wrapped inside char string for increased efficiency 

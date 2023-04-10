@@ -1,15 +1,17 @@
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.net.Socket;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
 
 
 public class Server {
 
 	private ServerSocket serverSocket;
 	
-	public Server(ServerSocket serverSocket) {
+	public Server(SSLServerSocket serverSocket) {
 		this.serverSocket = serverSocket;
 		
 	}
@@ -18,7 +20,7 @@ public class Server {
 	public void startServer() {
 		try {
 			while (!serverSocket.isClosed()) {
-				Socket socket = serverSocket.accept(); //blocking method, program halted until client connects, when finally connects, a socket object is returned
+				SSLSocket socket = (SSLSocket) serverSocket.accept(); //blocking method, program halted until client connects, when finally connects, a socket object is returned
 				printNewConnection(socket.getInetAddress().toString());
 				ClientHandler clientHandler = new ClientHandler(socket);
 				
@@ -50,9 +52,29 @@ public class Server {
 	}
 	
 	public static void main(String[] args) throws IOException {
+		System.setProperty("javax.net.ssl.keyStore", "E:\\keydir\\server-keystore.p12");
+        System.setProperty("javax.net.ssl.keyStorePassword", "my_keystore_password");
+        System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
 		
-		ServerSocket serverSocket = new ServerSocket(9999);
-		Server server = new Server(serverSocket);
+
+
+		SSLServerSocketFactory sslssf = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+		SSLServerSocket sslSocket = (SSLServerSocket) sslssf.createServerSocket(9999);
+
+		//Get the list of supported cipher suites
+		String[] supportedCipherSuites = sslssf.getSupportedCipherSuites();
+		
+		for (String cipherSuite : supportedCipherSuites) {
+			System.out.println(cipherSuite);
+		}
+		
+		//Get the list of default cipher suites
+		/*String[] defaultCipherSuites = sslssf.getDefaultCipherSuites();
+        
+        for (String cipherSuite : defaultCipherSuites) {
+            System.out.println(cipherSuite);
+		}*/
+		Server server = new Server(sslSocket);
 		System.out.println("Server is up and running.");
 		server.startServer();
 	}
