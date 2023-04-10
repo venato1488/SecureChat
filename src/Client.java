@@ -18,13 +18,13 @@ import javax.net.ssl.SSLSocketFactory;
 
 public class Client {
 	
-	private Socket socket;
+	private SSLSocket socket;
 	private ObjectInputStream in; // to read messages from server
 	private ObjectOutputStream out;
 	private String username;
 	private LinkedHashMap<String, Member> memberList;
 
-	public Client(Socket socket, String username) {
+	public Client(SSLSocket socket, String username) {
 		// 
 		try {
 			this.socket = socket;
@@ -276,14 +276,14 @@ public class Client {
 	
 		
 		try (Scanner scanner = new Scanner(System.in)) {
-			System.out.println("Enter IP address and port of the server in the format <IP address> <port>: ");
+			/*System.out.println("Enter IP address and port of the server in the format <IP address> <port>: ");
 			String ipAndPort = scanner.nextLine();
 			String[] ipAndPortArray = ipAndPort.split(" ");
 			String ipAddress = ipAndPortArray[0];
-			int port = Integer.parseInt(ipAndPortArray[1]);   
+			int port = Integer.parseInt(ipAndPortArray[1]);  */ 
 			
 			SSLSocketFactory sslSocketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-			SSLSocket socket = (SSLSocket) sslSocketFactory.createSocket(ipAddress, port);
+			SSLSocket socket = (SSLSocket) sslSocketFactory.createSocket("localhost", 9999);
 			
 			System.out.println("Enter your username: ");
 			String username = scanner.nextLine();

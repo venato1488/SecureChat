@@ -1,34 +1,56 @@
-# TCP_chat_room
-The TCP chat application is a simple chat application built on top of the TCP protocol. The application allows multiple clients to connect to a central server and exchange messages with each other in real-time. With its basic functionality and easy-to-use interface, it is a great tool for anyone looking to connect with others over a network
+# SecureChat
 
-## Functionality
-When a client connects to the server, they are prompted to enter a username. The username must be at least 3 characters long and cannot contain special characters. Once the user has entered a valid username, they can start sending messages to the chat room.
+This is a multi-threaded chat application that utilizes SSL/TLS encrypted communication between a server and multiple clients. The application consists of a server that listens for incoming client connections, and clients that can send messages to the server. The server is responsible for broadcasting messages to all connected clients and handling private messages between clients.
 
-To send a private message to another connected client, the user can type "/p <Recipient> <Message>". The recipient must be a valid username of a connected client. The message will only be visible to the recipient and the sender.
+## Application Workflow:
 
-To see a list of all connected clients, the user can type "/members".
+1. The server is initialized with SSL/TLS configurations and starts listening for client connections on the specified port.
+2. Clients connect to the server using SSL/TLS encryption, providing a unique username.
+3. The server validates the uniqueness of the client's username and either approves or denies the connection.
+4. Once connected, clients can send messages to the server. The server broadcasts messages to all connected clients or handles private messages between clients.
+5. Clients receive messages from the server and display them in their chat interface.
+6. The first client to join the chat becomes the coordinator, who has the authority to kick other clients from the chat.
+7. Clients can disconnect from the server at any time, and the server handles their disconnection by updating the list of connected clients and assigning a new coordinator if necessary.
 
-## Classes
-The application consists of the following classes:
+## Classes Description:
+### 1. Server:
 
-### Server
-The Server class is responsible for starting and running the chat server. It listens for incoming connections from clients and creates a new ClientHandler for each connection. The ClientHandler is responsible for handling communication between the server and the client.
+• Initializes the SSL/TLS configurations, creates a server socket, and listens for incoming client connections.
+• Upon a new client connection, creates a new ClientHandler thread to handle the communication with that client.
+• Handles closing the server socket when necessary.
 
-### ClientHandler
-The ClientHandler class is responsible for handling communication between the server and the client. It listens for incoming messages from the client and broadcasts them to all other connected clients or sends a private message. It also maintains a list of all connected clients and their respective IP addresses and ports.
+### 2. ClientHandler (implements Runnable):
+• Manages the communication with a single client.
+• Reads incoming messages from the client, handles private messages, and broadcasts messages to all connected clients.
+• Tracks connected clients, manages the member list, and updates clients with the latest member list.
+• Handles kicking clients, assigning a new coordinator, and closing connections when necessary.
 
-### Client
-The Client class is responsible for connecting to the chat server and sending and receiving messages. It allows the user to send broadcast message or private messages to other connected clients and also displays a list of all connected clients.
+### 3. Client:
 
-### Message
-The Message class represents a message sent by a client. It contains information about the sender, timestamp, and message content.
+• Establishes a secure SSL/TLS connection to the server.
+• Sends and receives messages from the server using SSL/TLS encryption.
+• Handles user input, which includes sending messages and processing commands, such as private messaging or exiting the chat.
+• Starts two threads: one for receiving messages from the server and another for handling user input.
+• Displays the received messages on the client's interface.
+• Provides methods to close the client socket and disconnect from the server.
 
-### PrivateMessage
-The PrivateMessage class represents a private message sent by a client to another client. It extends the Message class and also contains information about the recipient.
+### 4. Member (implements Serializable):
+• Represents a connected client with their username, IP address, port, and coordinator status.
+• Provides getter and setter methods for its properties.
+### 5. Message (implements Serializable, MessageInterface):
 
-### Member
-The Member class represents a connected client. It contains information about the client's username, IP address, port, and whether or not the client is the coordinator.
+• Represents a chat message with its sender, timestamp, and content.
+• Provides getter and setter methods for its properties.
+### 6. PrivateMessage (extends Message):
 
+• Represents a private chat message between two clients.
+• Adds a recipient property to the Message class and provides getter and setter methods for it.
+### 7. MessageFactory:
 
+• A utility class that creates messages based on the MessageType enum (USERNAME, BROADCAST, PRIVATE, SERVER).
+• Provides a static method, createMessage(), which takes the message type, sender, content, and recipient (for private messages) as arguments, and returns a MessageInterface object.
+### 8. MessageInterface:
 
+• An interface implemented by the Message and PrivateMessage classes.
+• Provides method signatures for getting and setting content and sender.
 
