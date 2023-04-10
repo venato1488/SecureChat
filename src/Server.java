@@ -53,7 +53,7 @@ public class Server {
 	
 	public static void main(String[] args) throws IOException {
 		System.setProperty("javax.net.ssl.keyStore", "E:\\keydir\\server-keystore.p12");
-        System.setProperty("javax.net.ssl.keyStorePassword", "my_keystore_password");
+        System.setProperty("javax.net.ssl.keyStorePassword", System.getenv("keystore_pwd"));
         System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
 		
 		SSLServerSocketFactory sslssf = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();

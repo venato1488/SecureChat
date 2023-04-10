@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
@@ -271,7 +272,7 @@ public class Client {
 	
 	public static void main(String[] args) throws UnknownHostException, IOException {
 		System.setProperty("javax.net.ssl.trustStore", "E:\\keydir\\client-truststore.p12");
-        System.setProperty("javax.net.ssl.trustStorePassword", "my_truststore_password");
+        System.setProperty("javax.net.ssl.trustStorePassword", System.getenv("truststore_pwd"));
         System.setProperty("javax.net.ssl.trustStoreType", "PKCS12");
 	
 		
@@ -284,6 +285,9 @@ public class Client {
 			
 			SSLSocketFactory sslSocketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
 			SSLSocket socket = (SSLSocket) sslSocketFactory.createSocket("localhost", 9999);
+			SSLParameters sslParams = new SSLParameters();
+			sslParams.setEndpointIdentificationAlgorithm("HTTPS"); // Enables hostname verification
+			socket.setSSLParameters(sslParams);
 			
 			System.out.println("Enter your username: ");
 			String username = scanner.nextLine();
